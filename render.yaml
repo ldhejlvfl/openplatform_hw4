@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: line-gemini-bot
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python app.py"
+    envVars:
+      - key: LINE_CHANNEL_ACCESS_TOKEN
+        value: YOUR_ACCESS_TOKEN
+      - key: LINE_CHANNEL_SECRET
+        value: YOUR_SECRET
+      - key: GEMINI_API_KEY
+        value: YOUR_GEMINI_API_KEY
