@@ -6,6 +6,8 @@ import requests
 import sqlite3
 import os
 from dotenv import load_dotenv
+import google.generativeai as genai
+import pprint
 
 load_dotenv()
 
@@ -15,6 +17,9 @@ app = Flask(__name__)
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN", "YOUR_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET", "YOUR_SECRET")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY")
+# 氣象局api
+OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
+
 
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
@@ -45,54 +50,48 @@ def callback():
 def handle_text_message(event):
     message = event.message.text
     user_id = event.source.user_id
-    reply_text = ask_gemini(message)
 
     # 回傳id給使用者
     if message == 'id':
-        reply_text = TextSendMessage(text=f"{user_id}")
-        line_bot_api.reply_message(event.reply_token, reply_text)
+        reply_content = TextSendMessage(text=f"{user_id}")
+        line_bot_api.reply_message(event.reply_token, reply_content)
         return  # 回傳後就結束，不再執行其他邏輯
-
-
-    # 將 Gemini 的回覆裁切為最多 5000 字
-    if len(reply_text) > 5000:
-        reply_text = reply_text[:4997] + "..."
-
     # 貼圖
-    if message == 'sticker':
-        reply_text = StickerSendMessage(
+    elif message == 'sticker':
+        reply_content = StickerSendMessage(
             package_id='1070',
             sticker_id='17843'
         )
-
     # 圖片或影片
-    if message == 'image':
-        reply_text = ImageSendMessage(
+    elif message == 'image':
+        reply_content = ImageSendMessage(
             original_content_url="https://image1.gamme.com.tw/news2/2020/40/12/qJeZpqWbkKWcqqQ.jpg",
             preview_image_url="https://image1.gamme.com.tw/news2/2020/40/12/qJeZpqWbkKWcqqQ.jpg"
         )
-    if message == 'video':
-        reply_text = VideoSendMessage(
+    elif message == 'video':
+        reply_content = VideoSendMessage(
             original_content_url="https://videos.pexels.com/video-files/31532164/13439846_1920_1080_25fps.mp4",
             preview_image_url="https://i0.wp.com/travelfinder.blog/wp-content/uploads/2023/12/img_3643949441866512.jpg?fit=1000%2C667&ssl=1"
         )
-    
     # 位置訊息
-    if message == 'location':
-        reply_text = LocationSendMessage(
+    elif message == 'location':
+        reply_content = LocationSendMessage(
             title='Taipei 101',
             address='Taipei',
             latitude=25.03363,
             longitude=121.56481
         )
-
+    
     else:
-        reply_text = TextSendMessage(text=reply_text)
+        # Gemini 回覆處理
+        text_reply = ask_gemini(message)
+        # 將 Gemini 的回覆裁切為最多 5000 字
+        if len(text_reply) > 5000:
+            text_reply = text_reply[:4997] + "..."
+        reply_content = TextSendMessage(text=text_reply)
 
-    line_bot_api.reply_message(
-        event.reply_token,
-        reply_text
-    )
+    # 發送回應
+    line_bot_api.reply_message(event.reply_token, reply_content)
 
     conn = sqlite3.connect("chat_history.db")
     c = conn.cursor()
@@ -101,6 +100,13 @@ def handle_text_message(event):
     conn.close()
 
 def ask_gemini(prompt):
+    # genai.configure(api_key=GEMINI_API_KEY)
+    # model = genai.GenerativeModel('gemini-pro')
+    # chat = model.start_chat(history=[])
+
+    # response = model.generate_content(prompt)
+    # return response.text
+
     url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + GEMINI_API_KEY
     headers = {
         "Content-Type": "application/json"
@@ -123,8 +129,6 @@ def ask_gemini(prompt):
         return f"Gemini 請求失敗: {e}"
     except KeyError as e:
         return f"Gemini 回應結構異常: {e}"
-
-
 
 
 @app.route("/history/<user_id>", methods=["GET", "DELETE"])
@@ -150,4 +154,5 @@ def index():
     return "LINE Gemini Bot is running."
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="127.0.0.1", port=5003)
+
