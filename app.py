@@ -17,8 +17,6 @@ app = Flask(__name__)
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN", "YOUR_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET", "YOUR_SECRET")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY")
-# 氣象局api
-OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 
 
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
@@ -154,5 +152,5 @@ def index():
     return "LINE Gemini Bot is running."
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5003)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
 
